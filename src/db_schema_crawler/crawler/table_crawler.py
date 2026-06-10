@@ -47,30 +47,32 @@ class TableCrawler:
         return [row["COLUMN_NAME"] for row in res]
 
     def _get_update_time(self, table_name: str, fallback_cols: List[str] = None) -> str | None:
-        # Step 1: Read UPDATE_TIME from TABLES schema
-        sql_tables = """
-            SELECT UPDATE_TIME
-            FROM information_schema.TABLES
-            WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s
         """
-        res = self.connector.execute_query(sql_tables, (self.db_config.database, table_name))
-        if res and res[0]["UPDATE_TIME"]:
-            return str(res[0]["UPDATE_TIME"])
-
-        # Step 2: Fallback querying columns if they exist
+        Priority:
+          1. MAX(updated_at / update_time / modified_at) from actual data rows — most reliable.
+             information_schema.TABLES.UPDATE_TIME can be stale or equal to NOW() on some
+             MySQL configurations (innodb_stats_on_metadata=ON), so it is used only as fallback.
+          2. UPDATE_TIME from information_schema.TABLES — schema-level approximation.
+        """
         if fallback_cols is None:
             fallback_cols = ["updated_at", "update_time", "modified_at"]
-        
-        # Check column existence first
+
+        # Step 1: Check which fallback columns exist in this table
         sql_cols = """
             SELECT COLUMN_NAME
             FROM information_schema.COLUMNS
             WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s
               AND COLUMN_NAME IN (%s, %s, %s)
         """
-        existing_cols = self.connector.execute_query(sql_cols, (self.db_config.database, table_name, *fallback_cols))
-        existing_names = {row["COLUMN_NAME"] for row in existing_cols}
-        
+        try:
+            existing_cols = self.connector.execute_query(
+                sql_cols, (self.db_config.database, table_name, *fallback_cols)
+            )
+            existing_names = {row["COLUMN_NAME"] for row in existing_cols}
+        except Exception:
+            existing_names = set()
+
+        # Step 2: Try MAX(updated_at / update_time / modified_at) from actual data rows
         for col in fallback_cols:
             if col in existing_names:
                 sql_max = f"SELECT MAX(`{col}`) AS max_time FROM `{self.db_config.database}`.`{table_name}`"
@@ -80,6 +82,20 @@ class TableCrawler:
                         return str(res_max[0]["max_time"])
                 except Exception:
                     pass
+
+        # Step 3: Fallback — UPDATE_TIME from information_schema.TABLES
+        sql_tables = """
+            SELECT UPDATE_TIME
+            FROM information_schema.TABLES
+            WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s
+        """
+        try:
+            res = self.connector.execute_query(sql_tables, (self.db_config.database, table_name))
+            if res and res[0]["UPDATE_TIME"]:
+                return str(res[0]["UPDATE_TIME"])
+        except Exception:
+            pass
+
         return None
 
     def crawl_all_tables(self) -> List[TableSchema]:

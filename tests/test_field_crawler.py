@@ -210,7 +210,8 @@ def test_enum_and_comment_parsing(mock_db_config):
     ]
     mock_conn.execute_query.side_effect = lambda sql, params=(): columns_data if "COLUMNS" in sql.upper() else []
     
-    crawler = FieldCrawler(mock_conn, mock_db_config)
+    glossary = [{"term": "Giới tính", "synonyms": ["gender", "sex"]}]
+    crawler = FieldCrawler(mock_conn, mock_db_config, glossary=glossary)
     res = crawler.crawl_fields_for_table("users")
     
     assert len(res) == 2
@@ -218,7 +219,7 @@ def test_enum_and_comment_parsing(mock_db_config):
     # Check gender column
     assert res[0].danh_sach_gia_tri == "Male, Female"
     assert res[0].dinh_nghia_nghiep_vu == ""
-    assert res[0].anh_xa == "danh_muc_gender.gender"
+    assert res[0].anh_xa == "Giới tính"
     assert res[0].du_lieu_ca_nhan == ""
     
     # Check ssn column

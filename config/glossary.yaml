@@ -1,0 +1,45 @@
+glossary:
+  # ── Thông tin cá nhân ─────────────────────────────────────────────────────
+  - term: "Giới tính"
+    # Chỉ match các tên cột đặc thù cho giới tính — "gt", "gioi_tinh", v.v.
+    synonyms: ["gioi_tinh", "gender", "sex", "sex_code", "ma_gt", "gt", "gioitinh", "sex_cd", "gender_type"]
+
+  - term: "Họ và tên"
+    # Loại bỏ "ten" và "name" vì quá chung — sẽ khớp nhầm "ten_don_vi", "name" (loại đất)
+    # Chỉ giữ tên cột đa từ hoặc đủ dài (≥ 5 ký tự sau khi normalize)
+    synonyms: ["ho_ten", "fullname", "full_name", "customer_name", "ho_va_ten",
+               "ten_nhan_vien", "ten_can_bo", "ten_khach_hang", "ten_nguoi_dung",
+               "ho_va_ten_dem", "ten_day_du"]
+
+  - term: "Ngày sinh"
+    synonyms: ["ngay_sinh", "dob", "date_of_birth", "birth_date", "birthdate", "ngaysinh"]
+
+  - term: "Số điện thoại"
+    synonyms: ["so_dien_thoai", "phone", "phone_number", "sdt", "tel", "telephone", "mobile"]
+
+  - term: "Email"
+    synonyms: ["email", "mail", "dia_chi_email", "email_address"]
+
+  - term: "Căn cước công dân"
+    # "cccd" chỉ 4 ký tự nhưng đủ đặc thù → vẫn giữ (Level 1 exact match)
+    synonyms: ["cccd", "cmnd", "so_cmnd", "so_cccd", "citizen_id", "identity_card", "can_cuoc_cong_dan"]
+
+  # ── Đơn vị / Tổ chức ──────────────────────────────────────────────────────
+  - term: "Đơn vị hành chính"
+    synonyms: ["don_vi_hanh_chinh", "ma_dvhc", "ma_xa", "ma_huyen", "ma_tinh", "dvhc"]
+
+  - term: "Dịch vụ"
+    synonyms: ["service_code", "ma_dv", "dich_vu", "ma_dich_vu"]
+
+  # ── Dữ liệu đất đai ───────────────────────────────────────────────────────
+  - term: "Loại đất"
+    synonyms: ["loai_dat", "ma_loai_dat", "muc_dich_su_dung_dat", "land_code", "land_type"]
+
+  # ── Trạng thái ────────────────────────────────────────────────────────────
+  - term: "Trạng thái"
+    # "status" và "state" ≥ 5 ký tự → Level 2B single-token match
+    synonyms: ["trang_thai", "status", "state", "status_code"]
+
+  # ── Địa lý ────────────────────────────────────────────────────────────────
+  - term: "Địa chỉ"
+    synonyms: ["dia_chi", "address", "home_address", "dia_chi_cu_tru"]
