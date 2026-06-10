@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "db-schema-crawler"
+version = "1.0.0"
+description = "MySQL Database Schema Crawler and Excel Catalog Exporter"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "mysql-connector-python>=8.3.0",
+    "pydantic>=2.7.0",
+    "openpyxl>=3.1.0",
+    "PyYAML>=6.0",
+    "click>=8.1.0"
+]
+
+[project.scripts]
+db-schema-crawler = "db_schema_crawler.main:cli"
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q --tb=short"
+testpaths = ["tests"]
+pythonpath = ["src"]

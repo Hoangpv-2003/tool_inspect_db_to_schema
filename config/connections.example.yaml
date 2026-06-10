@@ -1,0 +1,15 @@
+output_dir: "./output"
+databases:
+  - alias: "CSDL_GiaDat_HaTinh"
+    host: "localhost"
+    port: 3306
+    user: "readonly_user"
+    password: "password123"
+    database: "gia_dat_ha_tinh"
+    charset: "utf8mb4"
+  - alias: "CSDL_DanSo"
+    host: "localhost"
+    port: 3306
+    user: "readonly_user"
+    password: "password123"
+    database: "dan_so"
