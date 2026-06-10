@@ -55,7 +55,8 @@ def test_resolve_glossary_mapping_rules(mock_db_config, sample_glossary):
 
 def test_resolve_allowed_values_enum(mock_db_config):
     mock_conn = MagicMock()
-    crawler = FieldCrawler(mock_conn, mock_db_config)
+    llm_client = MagicMock()
+    crawler = FieldCrawler(mock_conn, mock_db_config, llm_client=llm_client)
     
     # Level 1: ENUM/SET parse
     res = crawler.resolve_allowed_values("gender", "enum('Nam','Nữ','Khác')", "", "users", {})
@@ -70,39 +71,40 @@ def test_resolve_allowed_values_fk(mock_db_config):
         }
     }
     
-    # Level 2: Foreign Key Lookup
-    # Mock returning values: STNMT, STC, SYT
-    mock_conn.execute_query.return_value = [
-        {"ma_don_vi": "STNMT"},
-        {"ma_don_vi": "STC"},
-        {"ma_don_vi": "SYT"}
-    ]
-    
     crawler = FieldCrawler(mock_conn, mock_db_config)
     res = crawler.resolve_allowed_values("ma_don_vi", "varchar(20)", "", "can_bo", fk_details)
     
-    assert res == "STNMT, STC, SYT"
-    assert mock_conn.execute_query.call_count == 1
+    # Should map to the referenced table directly
+    assert res == "Map với don_vi"
 
-def test_resolve_allowed_values_distinct_scan(mock_db_config):
+def test_resolve_allowed_values_constraints_and_auto_inc(mock_db_config):
     mock_conn = MagicMock()
+    crawler = FieldCrawler(mock_conn, mock_db_config)
     
-    # Mock row count query (Level 3 row count checks)
-    # First query count (Level 3 count is <= 50,000, e.g. 5)
-    # Second query distinct: returning 0, 1
-    mock_conn.execute_query.side_effect = [
-        [{"row_count": 5}],
-        [{"trang_thai": 0}, {"trang_thai": 1}]
-    ]
+    # Auto-increment
+    res = crawler.resolve_allowed_values("id", "int(11)", "", "can_bo", {}, extra="auto_increment")
+    assert res == "Auto-Increment"
+
+    # CHECK constraint status IN (0, 1, 2)
+    check_clauses = ["(`status` in (0,1,2))"]
+    res = crawler.resolve_allowed_values("status", "tinyint(4)", "", "land_transaction", {}, check_clauses=check_clauses)
+    assert res == "0, 1, 2"
+
+    # CHECK constraint between 0.50 and 3.00
+    check_clauses = ["(`he_so` between 0.50 and 3.00)"]
+    res = crawler.resolve_allowed_values("he_so", "decimal(4,2)", "", "bang_gia", {}, check_clauses=check_clauses)
+    assert res == "0.50 - 3.00"
+
+    # CHECK constraint comparison > 0
+    check_clauses = ["(`gia_min` > 0)"]
+    res = crawler.resolve_allowed_values("gia_min", "bigint(20)", "", "bang_gia", {}, check_clauses=check_clauses)
+    assert res == "> 0"
+
+def test_resolve_glossary_mapping_fallback(mock_db_config):
+    mock_conn = MagicMock()
+    crawler = FieldCrawler(mock_conn, mock_db_config)
     
-    llm_config = LLMConfig(mode="mock")
-    llm_client = LLMClient(llm_config)
-    
-    crawler = FieldCrawler(mock_conn, mock_db_config, llm_client=llm_client)
-    res = crawler.resolve_allowed_values("trang_thai", "tinyint(1)", "", "can_bo", {})
-    
-    # BUG FIX: mock mode does NOT call LLM for allowed values to prevent
-    # "0: Nam, 1: Nữ" from being erroneously applied to every 0/1 column.
-    # Raw distinct values are returned as-is when LLM mode is "mock".
-    assert res == "0, 1"
-    assert mock_conn.execute_query.call_count == 2
+    # test snake to Pascal conversion fallback
+    assert crawler.resolve_glossary_mapping("ma_cb", "", "can_bo") == "MaCanBo"
+    assert crawler.resolve_glossary_mapping("luong_cb", "", "can_bo") == "LuongCanBo"
+    assert crawler.resolve_glossary_mapping("het_hieu_luc", "", "bang_gia") == "HetHieuLuc"

@@ -1,45 +1,72 @@
 glossary:
   # ── Thông tin cá nhân ─────────────────────────────────────────────────────
   - term: "Giới tính"
-    # Chỉ match các tên cột đặc thù cho giới tính — "gt", "gioi_tinh", v.v.
+    id: "GioiTinh"
     synonyms: ["gioi_tinh", "gender", "sex", "sex_code", "ma_gt", "gt", "gioitinh", "sex_cd", "gender_type"]
 
   - term: "Họ và tên"
-    # Loại bỏ "ten" và "name" vì quá chung — sẽ khớp nhầm "ten_don_vi", "name" (loại đất)
-    # Chỉ giữ tên cột đa từ hoặc đủ dài (≥ 5 ký tự sau khi normalize)
+    id: "HoTen"
     synonyms: ["ho_ten", "fullname", "full_name", "customer_name", "ho_va_ten",
                "ten_nhan_vien", "ten_can_bo", "ten_khach_hang", "ten_nguoi_dung",
-               "ho_va_ten_dem", "ten_day_du"]
+               "ho_va_ten_dem", "ten_day_du", "ho_ten_nguoi_nop"]
 
   - term: "Ngày sinh"
+    id: "NgaySinh"
     synonyms: ["ngay_sinh", "dob", "date_of_birth", "birth_date", "birthdate", "ngaysinh"]
 
   - term: "Số điện thoại"
+    id: "SoDienThoai"
     synonyms: ["so_dien_thoai", "phone", "phone_number", "sdt", "tel", "telephone", "mobile"]
 
   - term: "Email"
+    id: "Email"
     synonyms: ["email", "mail", "dia_chi_email", "email_address"]
 
   - term: "Căn cước công dân"
-    # "cccd" chỉ 4 ký tự nhưng đủ đặc thù → vẫn giữ (Level 1 exact match)
-    synonyms: ["cccd", "cmnd", "so_cmnd", "so_cccd", "citizen_id", "identity_card", "can_cuoc_cong_dan"]
+    id: "SoDinhDanh"
+    synonyms: ["cccd", "cmnd", "so_cmnd", "so_cccd", "citizen_id", "identity_card", "can_cuoc_cong_dan", "so_giay_to"]
 
   # ── Đơn vị / Tổ chức ──────────────────────────────────────────────────────
   - term: "Đơn vị hành chính"
-    synonyms: ["don_vi_hanh_chinh", "ma_dvhc", "ma_xa", "ma_huyen", "ma_tinh", "dvhc"]
+    id: "MaCoQuan"
+    synonyms: ["don_vi_hanh_chinh", "ma_dvhc", "ma_xa", "ma_huyen", "ma_tinh", "dvhc", "don_vi_id", "ma_co_quan_xl"]
 
   - term: "Dịch vụ"
+    id: "MaDichVu"
     synonyms: ["service_code", "ma_dv", "dich_vu", "ma_dich_vu"]
 
   # ── Dữ liệu đất đai ───────────────────────────────────────────────────────
   - term: "Loại đất"
+    id: "MaLoaiDat"
     synonyms: ["loai_dat", "ma_loai_dat", "muc_dich_su_dung_dat", "land_code", "land_type"]
 
   # ── Trạng thái ────────────────────────────────────────────────────────────
   - term: "Trạng thái"
-    # "status" và "state" ≥ 5 ký tự → Level 2B single-token match
+    id: "TrangThai"
     synonyms: ["trang_thai", "status", "state", "status_code"]
 
   # ── Địa lý ────────────────────────────────────────────────────────────────
   - term: "Địa chỉ"
+    id: "DiaChi"
     synonyms: ["dia_chi", "address", "home_address", "dia_chi_cu_tru"]
+
+  # ── Nghiệp vụ giải quyết TTHC ─────────────────────────────────────────────
+  - term: "Mã hồ sơ"
+    id: "MaHoSoTTHC"
+    synonyms: ["ma_ho_so", "hoso_id", "ma_hs", "id_ho_so"]
+
+  - term: "Mã thủ tục"
+    id: "MaThuTuc"
+    synonyms: ["ma_tthc", "ma_thu_tuc", "tthc_code"]
+
+  - term: "Ngày tiếp nhận"
+    id: "NgayNhan"
+    synonyms: ["ngay_tiep_nhan", "ngay_nhan", "ngay_tiep_nhan_hs"]
+
+  - term: "Trạng thái hồ sơ"
+    id: "TrangThaiHoSo"
+    synonyms: ["trang_thai_hs", "trang_thai_ho_so", "status_hs"]
+
+  - term: "Đánh giá hài lòng"
+    id: "DanhGiaHaiLong"
+    synonyms: ["muc_do_hai_long", "danh_gia_hai_long", "hai_long"]

@@ -173,6 +173,10 @@ def test_format_length_other_types(mock_db_config):
     assert crawler._format_length({"DATA_TYPE": "date"}) == "YYYY-MM-DD"
     # text
     assert crawler._format_length({"DATA_TYPE": "longtext"}) == "text"
+    # enum
+    assert crawler._format_length({"DATA_TYPE": "enum"}) == "enum"
+    # set
+    assert crawler._format_length({"DATA_TYPE": "set"}) == "set"
     # custom fallback
     assert crawler._format_length({"DATA_TYPE": "blob"}) == "blob"
 
@@ -225,5 +229,5 @@ def test_enum_and_comment_parsing(mock_db_config):
     # Check ssn column
     assert res[1].du_lieu_ca_nhan == ""
     assert res[1].dinh_nghia_nghiep_vu == ""
-    assert res[1].anh_xa == ""
+    assert res[1].anh_xa == "Ssn"
 
