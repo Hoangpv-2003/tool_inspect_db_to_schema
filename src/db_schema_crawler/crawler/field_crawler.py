@@ -113,7 +113,12 @@ class FieldCrawler:
     def _format_length(self, col: Dict[str, Any]) -> str:
         data_type = col["DATA_TYPE"].lower()
         if data_type in ("enum", "set"):
-            return data_type
+            column_type = col.get("COLUMN_TYPE") or ""
+            match = re.match(r"^(?:enum|set)\((.*)\)$", column_type, re.IGNORECASE)
+            if match:
+                vals = re.findall(r"'([^']*)'", match.group(1))
+                return f"{data_type.upper()}({len(vals)} giá trị)"
+            return data_type.upper()
         if data_type in ("varchar", "char"):
             length = col["CHARACTER_MAXIMUM_LENGTH"]
             return f"{length} ký tự" if length is not None else ""

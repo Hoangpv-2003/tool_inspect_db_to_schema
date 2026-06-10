@@ -174,9 +174,11 @@ def test_format_length_other_types(mock_db_config):
     # text
     assert crawler._format_length({"DATA_TYPE": "longtext"}) == "text"
     # enum
-    assert crawler._format_length({"DATA_TYPE": "enum"}) == "enum"
+    assert crawler._format_length({"DATA_TYPE": "enum"}) == "ENUM"
     # set
-    assert crawler._format_length({"DATA_TYPE": "set"}) == "set"
+    assert crawler._format_length({"DATA_TYPE": "set"}) == "SET"
+    # enum with values
+    assert crawler._format_length({"DATA_TYPE": "enum", "COLUMN_TYPE": "enum('A','B','C')" }) == "ENUM(3 giá trị)"
     # custom fallback
     assert crawler._format_length({"DATA_TYPE": "blob"}) == "blob"
 
