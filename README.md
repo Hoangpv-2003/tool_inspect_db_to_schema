@@ -1,48 +1,51 @@
-# 📘 Hướng dẫn sử dụng Máy quét Dữ liệu tự động (DB Insight Harvester)
+# 🚀 Hệ thống Tự động Lập Danh mục Đặc tả Kỹ thuật CSDL
 
-Chào bạn! Đây là công cụ giúp các bạn **BA** và **Nghiệp vụ** tự động lập danh sách các bảng và trường dữ liệu từ hệ thống vào file Excel chỉ trong vài phút. Bạn không cần phải biết lập trình hay viết câu lệnh SQL phức tạp.
+**Giải pháp chuyên dụng cho công tác Quản lý và Quy hoạch Kiến trúc Dữ liệu số.**
 
----
-
-## 🌟 Công cụ này giúp gì cho bạn?
-
-1.  **Lập danh mục dữ liệu cực nhanh**: Thay vì ngồi copy từng tên bảng, tên cột từ kỹ thuật, máy sẽ tự quét và điền vào Excel cho bạn.
-2.  **Chính xác 100%**: Thông tin được lấy trực tiếp từ hệ thống nên không lo bị sai sót, nhầm lẫn.
-3.  **Đầy đủ thông tin**: Máy tự biết cột nào là Khóa chính, cột nào bắt buộc nhập, độ dài bao nhiêu... giúp bạn làm tài liệu thiết kế nghiệp vụ cực nhàn.
+Hệ thống được thiết kế để hỗ trợ các cơ quan, tổ chức trong việc tự động hóa công tác lập danh mục thông tin kỹ thuật, phục vụ báo cáo cấu trúc dữ liệu và xây dựng kho đặc tả nghiệp vụ mà **không tiếp cận nội dung dữ liệu nhạy cảm**.
 
 ---
 
-## 🚀 3 Bước để có ngay file Excel Danh mục dữ liệu
+## 🛡️ Cam kết An toàn và Bảo mật Dữ liệu
 
-### Bước 1: Khởi động công cụ
-Bạn tìm đến thư mục của công cụ này và nhấp đúp chuột vào file:
-👉 **`chay_tool.bat`** (File có biểu tượng bánh răng)
-
-*Cửa sổ hiện lên sẽ có màu sắc và hướng dẫn bằng Tiếng Việt.*
-
-### Bước 2: Cài đặt thông tin kết nối (Chỉ làm lần đầu)
-1.  Trên màn hình, nhấn phím số **[1]** trên bàn phím.
-2.  Chọn tiếp phím **[1]** để thêm database mới.
-3.  Hãy nhờ các bạn kỹ thuật (Dev) cung cấp cho các thông số sau và nhập vào:
-    - **Máy chủ (Host)**: Địa chỉ server.
-    - **Tên đăng nhập & Mật khẩu**.
-    - **Tên Database**: Tên kho dữ liệu bạn muốn quy hoạch.
-4.  Sau khi báo "Lưu thành công", nhấn phím **[0]** để quay lại màn hình chính.
-
-### Bước 3: Xuất dữ liệu ra Excel
-1.  Tại màn hình chính, nhấn phím số **[2]**.
-2.  Ngồi chờ máy quét (bạn sẽ thấy các dòng chữ chạy liên tục, đó là lúc máy đang làm việc).
-3.  Khi máy báo **"HOÀN THÀNH XUẤT SẮC"**, bạn nhấn phím bất kỳ.
-4.  Lúc này, hãy nhấn phím **[1]** để máy tự động mở thư mục chứa kết quả.
-    - File bạn cần tìm là: **`data_catalog.xlsx`**.
+Đây là ưu tiên số 1 của hệ thống khi làm việc với các cơ quan nhà nước:
+- **CHỈ THU THẬP CẤU TRÚC (Metadata Only)**: Hệ thống chỉ đọc tên bảng, tên trường, kiểu dữ liệu, độ dài và các ràng buộc kỹ thuật.
+- **KHÔNG TRÍCH XUẤT NỘI DUNG**: Hệ thống tuyệt đối không thực hiện các lệnh đọc dữ liệu (`SELECT *`) từ các bảng nghiệp vụ. Toàn bộ thông tin thu thập đều nằm trong các bảng quản lý hệ thống của CSDL (như `information_schema`, `ALL_TABLES`).
+- **KHÔNG LƯU TRỮ TRUNG GIAN**: Toàn bộ dữ liệu trích xuất được ghi trực tiếp ra file Excel trên máy tính của người dùng, không gửi qua internet hay lưu trữ trên bất kỳ máy chủ bên thứ ba nào.
 
 ---
 
-## ⚠️ Những lưu ý "sống còn" để không bị lỗi
+## ✨ Chức năng chính
 
-- **ĐÓNG FILE EXCEL**: Nếu bạn đang mở file `data_catalog.xlsx` để xem, hãy **ĐÓNG NÓ LẠI** trước khi bấm chạy công cụ. Nếu không, máy sẽ không thể ghi đè dữ liệu mới vào được.
-- **Mật khẩu**: Khi nhập mật khẩu trên màn hình đen, có thể bạn sẽ không thấy ký tự hiện ra (để bảo mật), bạn cứ gõ đúng và nhấn Enter là được.
-- **Nhờ hỗ trợ**: Nếu máy báo "Không thể kết nối", hãy kiểm tra xem bạn đã bật VPN chưa hoặc nhờ IT kiểm tra lại địa chỉ Host/Port.
+- **Kiểm kê đa nền tảng**: Tương thích hoàn toàn với MySQL, PostgreSQL, SQL Server và Oracle.
+- **Tự động hóa báo cáo**: Xuất đặc tả kỹ thuật ra định dạng Excel theo chuẩn tài liệu nghiệp vụ.
+- **Xác định logic kỹ thuật**: Tự động nhận diện cấu trúc Khóa chính, Khóa ngoại và các quy tắc kiểm soát dữ liệu.
+- **Giao diện thuần Việt**: Thao tác đơn giản, phù hợp với cán bộ nghiệp vụ và quản lý.
 
 ---
-*Chúc bạn làm việc thảnh thơi hơn với DB Insight Harvester!*
+
+## 📖 Hướng dẫn sử dụng nhanh
+
+### Bước 1: Khởi tạo hệ thống
+Tìm và chạy file: **`chay_tool.bat`** (Click đúp chuột).
+*Lưu ý: Hệ thống sẽ tự động kiểm tra và cấu hình môi trường trong lần đầu sử dụng.*
+
+### Bước 2: Thiết lập kết nối
+1.  Tại menu, chọn **[1] Cài đặt kết nối**.
+2.  Nhập các thông số kỹ thuật của CSDL (Host, Port, User, Password, DB Name) do bộ phận kỹ thuật cung cấp.
+3.  Nhấn **[0]** để xác nhận và quay lại.
+
+### Bước 3: Lập danh mục đặc tả
+1.  Chọn **[2] Chạy hệ thống**.
+2.  Hệ thống sẽ thực hiện quét cấu trúc kỹ thuật (Cam kết không chạm vào dữ liệu nghiệp vụ).
+3.  Kết thúc, chọn **[1]** để mở thư mục kết quả. File báo cáo: **`data_catalog.xlsx`**.
+
+---
+
+## ⚠️ Lưu ý sử dụng
+- **Quyền truy cập**: Chỉ cần quyền `READ-ONLY` trên các bảng hệ thống (Metadata queries).
+- **Trạng thái file**: Vui lòng **ĐÓNG FILE EXCEL** báo cáo trước khi ra lệnh trích xuất mới.
+- **Bảo mật mật khẩu**: Mật khẩu được lưu cục bộ dưới dạng mã hóa cơ bản để phục vụ kết nối, vui lòng không chia sẻ thư mục công cụ cho người không có thẩm quyền.
+
+---
+*Được phát triển phục vụ công tác Chuyển đổi số và Quản trị dữ liệu.*

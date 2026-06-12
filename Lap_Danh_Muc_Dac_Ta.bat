@@ -1,5 +1,5 @@
 @echo off
-title DB Schema Crawler Tool - Giao diện cho người nghiệp vụ
+title He thong Lap Danh muc Dac ta Ky thuat CSDL
 color 0B
 cd /d %~dp0
 
@@ -19,6 +19,6 @@ pip install -r requirements.txt --quiet --disable-pip-version-check
 :: Chay ung dung
 cls
 set PYTHONPATH=%PYTHONPATH%;%cd%\src
-python -m db_schema_crawler.cli
+python -m technical_schema_cataloger.cli
 
 pause

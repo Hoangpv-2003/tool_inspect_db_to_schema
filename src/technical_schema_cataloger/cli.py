@@ -40,7 +40,7 @@ def setup_menu():
         print_header("CẤU HÌNH KẾT NỐI DATABASE")
         config = load_config()
         
-        print(f"{Fore.YELLOW}Danh sách database hiện có:")
+        print(f"{Fore.YELLOW}Danh sách kết nối với database hiện có:")
         dbs = config.get("databases", [])
         if not dbs:
             print("  (Trống)")
@@ -49,7 +49,7 @@ def setup_menu():
                 print(f"  {i}. {db.get('alias')} ({db.get('db_type')} @ {db.get('host')})")
         
         print(f"\n{Fore.GREEN}[1] Thêm kết nối mới")
-        print(f"{Fore.RED}[2] Xóa tất cả và làm lại")
+        print(f"{Fore.RED}[2] Xóa kết nối với với database cũ")
         print(f"{Fore.WHITE}[0] Trở lại menu chính")
         
         choice = input(f"\nChọn chức năng: ").strip()
@@ -100,7 +100,7 @@ def setup_menu():
 
 def run_tool_menu():
     clear_screen()
-    print_header("ĐANG CHẠY TRÍCH XUẤT CẤU TRÚC DỮ LIỆU")
+    print_header("ĐANG CHẠY TRÍCH XUẤT CẤU TRÚC DATABASE")
     
     config = load_config()
     if not config.get("databases"):
@@ -128,7 +128,7 @@ def run_tool_menu():
         
         # Thêm cờ bufsize=1 để đọc log dòng theo dòng ngay lập tức
         process = subprocess.Popen(
-            [sys.executable, "-m", "db_schema_crawler.main", "--config", CONFIG_PATH],
+            [sys.executable, "-m", "technical_schema_cataloger.main", "--config", CONFIG_PATH],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
@@ -197,9 +197,10 @@ def main_menu():
     while True:
         clear_screen()
         print(f"{Fore.CYAN}{'='*60}")
-        print(f"{Fore.WHITE}{Style.BRIGHT}    CÔNG CỤ TỰ ĐỘNG THU THẬP CẤU TRÚC DATABASE (V1.0)")
+        print(f"{Fore.WHITE}{Style.BRIGHT}    HỆ THỐNG TỰ ĐỘNG LẬP DANH MỤC ĐẶC TẢ KỸ THUẬT CSDL")
         print(f"{Fore.CYAN}{'='*60}")
-        print(f"\nChào bạn, đây là công cụ hỗ trợ đọc cấu hình database và xuất file Excel.")
+        print(f"\nChào bạn! Đây là giải pháp an toàn để trích xuất cấu trúc Database.")
+        print(f"{Fore.YELLOW}Cam kết: Chỉ thu thập Schema kỹ thuật - KHÔNG lấy dữ liệu.")
         
         print(f"\n{Fore.WHITE}{'-'*60}")
         print(f"{Fore.GREEN}  [1] CÀI ĐẶT THÔNG TIN DATABASE (Setup)")
