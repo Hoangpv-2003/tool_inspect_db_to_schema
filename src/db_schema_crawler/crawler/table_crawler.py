@@ -16,7 +16,7 @@ class TableCrawler:
         result = []
         for idx, table in enumerate(tables, 1):
             table_name = table["TABLE_NAME"]
-            mo_ta = table.get("TABLE_COMMENT", "")
+            mo_ta = ""
             
             # Count records
             so_ban_ghi = self.connector.count_records(table_name)
