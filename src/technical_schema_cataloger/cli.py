@@ -98,7 +98,7 @@ def setup_menu():
         elif choice == '0':
             break
 
-def run_tool_menu():
+def run_extract_menu():
     clear_screen()
     print_header("ĐANG CHẠY TRÍCH XUẤT CẤU TRÚC DATABASE")
     
@@ -163,7 +163,7 @@ def run_tool_menu():
             print(f"\n{Fore.RED}Quá trình chạy có lỗi xảy ra (Mã lỗi: {process.returncode}).")
         
     except Exception as e:
-        print(f"{Fore.RED}Lỗi hệ thống khi chạy tool: {e}")
+        print(f"{Fore.RED}Lỗi hệ thống khi chạy hệ thống: {e}")
     
     input(f"\n{Fore.YELLOW}Bấm phím bất kỳ để tiếp tục...")
     
@@ -206,7 +206,7 @@ def main_menu():
         print(f"{Fore.GREEN}  [1] CÀI ĐẶT THÔNG TIN DATABASE (Setup)")
         print(f"      (Nhập địa chỉ, tên đăng nhập, mật khẩu...)")
         
-        print(f"\n{Fore.CYAN}  [2] BẮT ĐẦU CHẠY CÔNG CỤ (Run Tool)")
+        print(f"\n{Fore.CYAN}  [2] BẮT ĐẦU TRÍCH XUẤT SCHEMA CATALOGER")
         print(f"      (Quá trình sẽ mất vài phút tùy vào độ lớn của DB)")
         
         print(f"\n{Fore.RED}  [E] THOÁT CHƯƠNG TRÌNH")
@@ -217,7 +217,7 @@ def main_menu():
         if choice == '1':
             setup_menu()
         elif choice == '2':
-            run_tool_menu()
+            run_extract_menu()
         elif choice == 'E':
             print(f"\n{Fore.YELLOW}Cảm ơn bạn đã sử dụng. Hẹn gặp lại!")
             time.sleep(1)
