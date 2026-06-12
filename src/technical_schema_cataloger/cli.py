@@ -57,7 +57,17 @@ def setup_menu():
         if choice == '1':
             print(f"\n{Fore.CYAN}--- Nhập thông tin kết nối ---")
             alias = input("Tên gợi nhớ (VD: db_nhan_su): ").strip()
-            db_type = input("Loại DB (mysql, postgresql, sqlserver, oracle): ").strip().lower()
+            print(f"\nChọn loại Database:")
+            print(f"  [1] MySQL / MariaDB")
+            print(f"  [2] PostgreSQL")
+            print(f"  [3] Microsoft SQL Server")
+            print(f"  [4] Oracle")
+            
+            db_choice = input("Nhập số (1-4): ").strip()
+            db_map = {"1": "mysql", "2": "postgresql", "3": "sqlserver", "4": "oracle"}
+            db_type = db_map.get(db_choice, "mysql") # Mặc định là mysql nếu nhập sai
+            
+            print(f"-> Đã chọn: {Fore.YELLOW}{db_type.upper()}")
             host = input("Địa chỉ máy chủ (Host): ").strip()
             port = input("Cổng (Port - mặc định tùy loại DB): ").strip()
             user = input("Tên đăng nhập: ").strip()
