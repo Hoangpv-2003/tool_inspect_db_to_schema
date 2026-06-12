@@ -13,6 +13,7 @@ class LLMConfig(BaseModel):
 
 class DBConfig(BaseModel):
     alias: str
+    db_type: str = "mysql"  # mysql, postgresql, sqlserver, oracle
     host: str
     port: int = 3306
     user: str

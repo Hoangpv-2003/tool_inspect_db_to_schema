@@ -3,7 +3,7 @@ import logging
 import unicodedata
 import difflib
 from typing import List, Dict, Any, Optional
-from ..connector.mysql import MySQLConnector
+from ..connector.base import BaseConnector
 from ..config.schema import DBConfig
 from ..models.field_schema import FieldSchema
 from ..ai.llm_client import LLMClient
@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 class FieldCrawler:
     def __init__(
         self, 
-        connector: MySQLConnector, 
+        connector: BaseConnector, 
         db_config: DBConfig, 
         llm_client: Optional[LLMClient] = None,
         glossary: Optional[List[Dict[str, Any]]] = None
@@ -22,69 +22,6 @@ class FieldCrawler:
         self.db_config = db_config
         self.llm_client = llm_client
         self.glossary = glossary or []
-
-    def _get_columns(self, table_name: str) -> List[Dict[str, Any]]:
-        sql = """
-            SELECT 
-                COLUMN_NAME, 
-                DATA_TYPE, 
-                COLUMN_TYPE,
-                CHARACTER_MAXIMUM_LENGTH, 
-                NUMERIC_PRECISION, 
-                NUMERIC_SCALE, 
-                DATETIME_PRECISION, 
-                IS_NULLABLE, 
-                COLUMN_KEY, 
-                COLUMN_DEFAULT, 
-                COLUMN_COMMENT, 
-                EXTRA,
-                ORDINAL_POSITION
-            FROM information_schema.COLUMNS
-            WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s
-            ORDER BY ORDINAL_POSITION
-        """
-        return self.connector.execute_query(sql, (self.db_config.database, table_name))
-
-    def _get_fk_details(self, table_name: str) -> Dict[str, Dict[str, str]]:
-        sql = """
-            SELECT 
-                COLUMN_NAME, 
-                REFERENCED_TABLE_NAME, 
-                REFERENCED_COLUMN_NAME
-            FROM information_schema.KEY_COLUMN_USAGE
-            WHERE TABLE_SCHEMA = %s 
-              AND TABLE_NAME = %s 
-              AND REFERENCED_TABLE_NAME IS NOT NULL
-        """
-        try:
-            res = self.connector.execute_query(sql, (self.db_config.database, table_name))
-            return {
-                row["COLUMN_NAME"]: {
-                    "referenced_table": row["REFERENCED_TABLE_NAME"],
-                    "referenced_column": row["REFERENCED_COLUMN_NAME"]
-                } for row in res
-            }
-        except Exception as e:
-            logger.warning(f"Could not retrieve FK details for table {table_name}: {e}")
-            return {}
-
-    def _get_check_constraints(self, table_name: str) -> List[str]:
-        sql = """
-            SELECT cc.CHECK_CLAUSE
-            FROM information_schema.TABLE_CONSTRAINTS tc
-            JOIN information_schema.CHECK_CONSTRAINTS cc 
-              ON tc.CONSTRAINT_SCHEMA = cc.CONSTRAINT_SCHEMA 
-             AND tc.CONSTRAINT_NAME = cc.CONSTRAINT_NAME
-            WHERE tc.CONSTRAINT_SCHEMA = %s 
-              AND tc.TABLE_NAME = %s 
-              AND tc.CONSTRAINT_TYPE = 'CHECK'
-        """
-        try:
-            res = self.connector.execute_query(sql, (self.db_config.database, table_name))
-            return [row["CHECK_CLAUSE"] for row in res]
-        except Exception as e:
-            logger.warning(f"Could not retrieve check constraints for table {table_name}: {e}")
-            return []
 
     def _resolve_check_constraint_for_column(self, col_name: str, check_clauses: List[str]) -> Optional[str]:
         for clause in check_clauses:
@@ -137,20 +74,17 @@ class FieldCrawler:
             return "YYYY-MM-DD"
         elif data_type in ("text", "longtext", "mediumtext", "tinytext"):
             return "text"
-        return data_type
+        return data_type if data_type else "N/A"
 
-    def _resolve_key_type(self, col_key: str, col_name: str, fk_details: Dict[str, Dict[str, str]]) -> str:
-        is_pk = (col_key == "PRI")
+    def _resolve_key_type(self, col_name: str, pks: List[str], fk_details: Dict[str, Dict[str, str]]) -> str:
+        is_pk = (col_name in pks)
         is_fk = (col_name in fk_details)
-        is_uk = (col_key == "UNI")
         if is_pk and is_fk:
             return "PK,FK"
         elif is_pk:
             return "PK"
         elif is_fk:
             return "FK"
-        elif is_uk:
-            return "UK"
         return ""
 
     def _normalize(self, s: str) -> str:
@@ -405,20 +339,22 @@ Chỉ trả về chuỗi kết quả ngắn gọn nhất, không thêm giải th
         return self._get_fallback_allowed_values(col_name, col_type, table_name)
 
     def crawl_fields_for_table(self, table_name: str) -> List[FieldSchema]:
-        cols = self._get_columns(table_name)
-        fk_details = self._get_fk_details(table_name)
-        check_clauses = self._get_check_constraints(table_name)
+        cols = self.connector.get_columns(table_name)
+        fk_details = self.connector.get_foreign_keys(table_name)
+        check_clauses = self.connector.get_check_constraints(table_name)
+        pks = self.connector.get_primary_keys(table_name)
+        
         result = []
         for idx, col in enumerate(cols, 1):
             col_name = col["COLUMN_NAME"]
             data_type = col["DATA_TYPE"]
             column_type = col.get("COLUMN_TYPE") or ""
-            comment = col["COLUMN_COMMENT"] or ""
+            comment = col.get("COLUMN_COMMENT") or ""
             extra = col.get("EXTRA") or ""
             
             length_format = self._format_length(col)
-            bat_buoc = "Có" if col["IS_NULLABLE"] == "NO" else "Không"
-            key_type = self._resolve_key_type(col["COLUMN_KEY"], col_name, fk_details)
+            bat_buoc = "Có" if col.get("IS_NULLABLE") == "NO" else "Không"
+            key_type = self._resolve_key_type(col_name, pks, fk_details)
             
             # Resolve allowed values
             danh_sach_gia_tri = self.resolve_allowed_values(

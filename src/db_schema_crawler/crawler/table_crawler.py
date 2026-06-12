@@ -1,128 +1,36 @@
 import logging
 from typing import List, Dict, Any
-from ..connector.mysql import MySQLConnector
+from ..connector.base import BaseConnector
 from ..config.schema import DBConfig
 from ..models.table_schema import TableSchema
 
 logger = logging.getLogger(__name__)
 
 class TableCrawler:
-    def __init__(self, connector: MySQLConnector, db_config: DBConfig):
+    def __init__(self, connector: BaseConnector, db_config: DBConfig):
         self.connector = connector
         self.db_config = db_config
 
-    def _get_table_list(self) -> List[Dict[str, Any]]:
-        sql = """
-            SELECT 
-                TABLE_NAME, 
-                TABLE_COMMENT, 
-                CREATE_TIME, 
-                UPDATE_TIME
-            FROM information_schema.TABLES
-            WHERE TABLE_SCHEMA = %s 
-              AND TABLE_TYPE = 'BASE TABLE'
-            ORDER BY TABLE_NAME
-        """
-        return self.connector.execute_query(sql, (self.db_config.database,))
-
-    def _count_records(self, table_name: str) -> int:
-        sql = f"SELECT COUNT(*) AS row_count FROM `{self.db_config.database}`.`{table_name}`"
-        try:
-            res = self.connector.execute_query(sql)
-            return res[0]["row_count"] if res else 0
-        except Exception as e:
-            logger.warning(f"Could not count records for table {table_name}: {e}")
-            return -1
-
-    def _get_primary_keys(self, table_name: str) -> List[str]:
-        sql = """
-            SELECT COLUMN_NAME
-            FROM information_schema.KEY_COLUMN_USAGE
-            WHERE TABLE_SCHEMA = %s 
-              AND TABLE_NAME = %s 
-              AND CONSTRAINT_NAME = 'PRIMARY'
-            ORDER BY ORDINAL_POSITION
-        """
-        res = self.connector.execute_query(sql, (self.db_config.database, table_name))
-        return [row["COLUMN_NAME"] for row in res]
-
-    def _get_update_time(self, table_name: str, fallback_cols: List[str] = None) -> str | None:
-        """
-        Priority:
-          1. MAX(updated_at / update_time / modified_at) from actual data rows — most reliable.
-             information_schema.TABLES.UPDATE_TIME can be stale or equal to NOW() on some
-             MySQL configurations (innodb_stats_on_metadata=ON), so it is used only as fallback.
-          2. UPDATE_TIME from information_schema.TABLES — schema-level approximation.
-        """
-        if fallback_cols is None:
-            fallback_cols = ["updated_at", "update_time", "modified_at"]
-
-        # Step 1: Check which fallback columns exist in this table
-        sql_cols = """
-            SELECT COLUMN_NAME
-            FROM information_schema.COLUMNS
-            WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s
-              AND COLUMN_NAME IN (%s, %s, %s)
-        """
-        try:
-            existing_cols = self.connector.execute_query(
-                sql_cols, (self.db_config.database, table_name, *fallback_cols)
-            )
-            existing_names = {row["COLUMN_NAME"] for row in existing_cols}
-        except Exception:
-            existing_names = set()
-
-        # Step 2: Try MAX(updated_at / update_time / modified_at) from actual data rows
-        for col in fallback_cols:
-            if col in existing_names:
-                sql_max = f"SELECT MAX(`{col}`) AS max_time FROM `{self.db_config.database}`.`{table_name}`"
-                try:
-                    res_max = self.connector.execute_query(sql_max)
-                    if res_max and res_max[0]["max_time"]:
-                        return str(res_max[0]["max_time"])
-                except Exception:
-                    pass
-
-        # Step 3: Fallback — UPDATE_TIME from information_schema.TABLES
-        sql_tables = """
-            SELECT UPDATE_TIME
-            FROM information_schema.TABLES
-            WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s
-        """
-        try:
-            res = self.connector.execute_query(sql_tables, (self.db_config.database, table_name))
-            if res and res[0]["UPDATE_TIME"]:
-                return str(res[0]["UPDATE_TIME"])
-        except Exception:
-            pass
-
-        return None
-
     def crawl_all_tables(self) -> List[TableSchema]:
-        tables = self._get_table_list()
+        tables = self.connector.get_tables()
         result = []
         for idx, table in enumerate(tables, 1):
             table_name = table["TABLE_NAME"]
-            mo_ta = ""
+            mo_ta = table.get("TABLE_COMMENT", "")
             
             # Count records
-            so_ban_ghi = self._count_records(table_name)
+            so_ban_ghi = self.connector.count_records(table_name)
             
             # Get primary keys
-            pks = self._get_primary_keys(table_name)
+            pks = self.connector.get_primary_keys(table_name)
             khoa_dinh_danh = " + ".join(pks) if pks else ""
             
             # Get number of fields
-            sql_fields_count = """
-                SELECT COUNT(*) AS col_count
-                FROM information_schema.COLUMNS
-                WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s
-            """
-            fields_res = self.connector.execute_query(sql_fields_count, (self.db_config.database, table_name))
-            so_truong = fields_res[0]["col_count"] if fields_res else 0
+            columns = self.connector.get_columns(table_name)
+            so_truong = len(columns)
             
             # Get update time
-            ngay_cap_nhat = self._get_update_time(table_name)
+            ngay_cap_nhat = self.connector.get_update_time(table_name)
             
             result.append(TableSchema(
                 stt=idx,

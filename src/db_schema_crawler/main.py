@@ -5,7 +5,7 @@ import yaml
 from pathlib import Path
 from typing import List, Dict, Any
 from .config.loader import ConfigLoader
-from .connector.mysql import MySQLConnector
+from .connector.factory import ConnectorFactory
 from .crawler.table_crawler import TableCrawler
 from .crawler.field_crawler import FieldCrawler
 from .exporter.excel_exporter import ExcelCatalogExporter
@@ -74,7 +74,7 @@ def run(
     for db_config in config.databases:
         logger.info(f"[{db_config.alias}] Starting crawl on database {db_config.database}...")
         try:
-            with MySQLConnector(db_config) as conn:
+            with ConnectorFactory.get_connector(db_config) as conn:
                 table_crawler = TableCrawler(conn, db_config)
                 field_crawler = FieldCrawler(
                     connector=conn,
