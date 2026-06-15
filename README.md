@@ -54,5 +54,4 @@ Tìm và chạy file: **`Lap_Danh_Muc_Dac_Ta.bat`** (Click đúp chuột).
 
 ---
 
-*Được phát triển phục vụ công tác Chuyển đổi số và Quản trị dữ liệu.*
 Chi tiết: https://docs.google.com/document/d/1SU6Y1Vu7-eiE0r5FcPGMpOR2P5ut2wxwF-Em7obHVRs/edit?usp=sharing
