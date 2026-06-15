@@ -203,6 +203,72 @@ def run_extract_menu():
         elif choice == '0':
             break
 
+def run_sql_file_menu():
+    clear_screen()
+    print_header("TRÍCH XUẤT TỪ FILE SQL (.sql)")
+    
+    print(f"{Fore.WHITE}Vui lòng nhập đường dẫn đầy đủ đến file .sql của bạn.")
+    print(f"{Fore.YELLOW}Gợi ý: Bạn có thể kéo thả file vào cửa sổ này để lấy đường dẫn.")
+    
+    file_path = input(f"\nĐường dẫn file: ").strip().strip('"')
+    
+    if not os.path.exists(file_path):
+        print(f"{Fore.RED}Lỗi: Không tìm thấy file tại đường dẫn đã nhập.")
+        input(f"\n{Fore.YELLOW}Bấm phím bất kỳ để quay lại...")
+        return
+
+    try:
+        env = os.environ.copy()
+        env["PYTHONPATH"] = str(Path.cwd() / "src")
+        
+        process = subprocess.Popen(
+            [sys.executable, "-m", "technical_schema_cataloger.main", "--config", CONFIG_PATH, "--sql-file", file_path],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            encoding="utf-8",
+            env=env,
+            bufsize=1
+        )
+        
+        while True:
+            line = process.stdout.readline()
+            if not line and process.poll() is not None:
+                break
+            if line:
+                print(line.strip())
+            
+        process.wait()
+        
+        if process.returncode == 0:
+            print(f"\n{Fore.GREEN}HOÀN THÀNH!")
+        else:
+            print(f"\n{Fore.RED}Có lỗi khi xử lý file.")
+        
+    except Exception as e:
+        print(f"{Fore.RED}Lỗi hệ thống: {e}")
+    
+    input(f"\n{Fore.YELLOW}Bấm phím bất kỳ để tiếp tục...")
+    
+    # Màn hình kết quả
+    config = load_config()
+    output_dir = os.path.abspath(config.get("output_dir", "./output"))
+    clear_screen()
+    print_header("KẾT QUẢ TRÍCH XUẤT")
+    print(f"{Fore.WHITE}Báo cáo đã được tạo tại: {Fore.CYAN}{output_dir}")
+    print(f"\n{Fore.GREEN}[1] Mở thư mục kết quả")
+    print(f"{Fore.WHITE}[0] Trở về menu chính")
+    
+    while True:
+        choice = input(f"\nChọn: ").strip()
+        if choice == '1':
+            try:
+                if os.name == 'nt': os.startfile(output_dir)
+                else: subprocess.run(['open', output_dir])
+            except: pass
+        elif choice == '0':
+            break
+
 def main_menu():
     while True:
         clear_screen()
@@ -216,18 +282,23 @@ def main_menu():
         print(f"{Fore.GREEN}  [1] CÀI ĐẶT THÔNG TIN DATABASE (Setup)")
         print(f"      (Nhập địa chỉ, tên đăng nhập, mật khẩu...)")
         
-        print(f"\n{Fore.CYAN}  [2] BẮT ĐẦU TRÍCH XUẤT SCHEMA CATALOGER")
-        print(f"      (Quá trình sẽ mất vài phút tùy vào độ lớn của DB)")
+        print(f"\n{Fore.CYAN}  [2] BẮT ĐẦU TRÍCH XUẤT TỪ DATABASE (Cần kết nối)")
+        print(f"      (Quét trực tiếp qua VPN, Mạng chuyên dùng...)")
+        
+        print(f"\n{Fore.MAGENTA}  [3] TRÍCH XUẤT TỪ FILE SQL (.sql) (Không cần kết nối)")
+        print(f"      (Dành cho file Dump, file Export cấu trúc)")
         
         print(f"\n{Fore.RED}  [E] THOÁT CHƯƠNG TRÌNH")
         print(f"{Fore.WHITE}{'-'*60}")
         
-        choice = input(f"\nNhập lựa chọn của bạn (1, 2 hoặc E): ").strip().upper()
+        choice = input(f"\nNhập lựa chọn của bạn (1, 2, 3 hoặc E): ").strip().upper()
         
         if choice == '1':
             setup_menu()
         elif choice == '2':
             run_extract_menu()
+        elif choice == '3':
+            run_sql_file_menu()
         elif choice == 'E':
             print(f"\n{Fore.YELLOW}Cảm ơn bạn đã sử dụng. Hẹn gặp lại!")
             time.sleep(1)
