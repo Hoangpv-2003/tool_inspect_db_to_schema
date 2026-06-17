@@ -84,34 +84,30 @@ def run(
         config.llm.api_key = llm_key
 
     output_dir = output_dir_override or config.output_dir
-    output_path = Path(output_dir) / "data_catalog.xlsx"
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
 
     # Load Business Glossary dictionary
     glossary = load_glossary(glossary_path)
     logger.info(f"Loaded glossary file from {glossary_path} with {len(glossary)} terms.")
 
-    all_tables: List[TableSchema] = []
-    all_fields: List[FieldSchema] = []
-    global_stt_table = 1
-    global_stt_field = 1
-
     if sql_file_path:
-        # SQL file mode: không cần LLMClient
+        # SQL file mode: export based on SQL filename
+        sql_name = Path(sql_file_path).stem
+        output_path = Path(output_dir) / f"data_catalog_{sql_name}.xlsx"
+        
         logger.info(f"Starting extraction from SQL file: {sql_file_path}")
         try:
             crawler = SQLFileCrawler(sql_file_path, glossary=glossary)
             tables, fields = crawler.parse()
             
-            for table in tables:
-                table.stt = global_stt_table
-                global_stt_table += 1
-            for field in fields:
-                field.stt = global_stt_field
-                global_stt_field += 1
+            for idx, table in enumerate(tables, 1):
+                table.stt = idx
+            for idx, field in enumerate(fields, 1):
+                field.stt = idx
                 
-            all_tables.extend(tables)
-            all_fields.extend(fields)
-            logger.info(f"Extracted {len(tables)} tables and {len(fields)} fields from file.")
+            exporter = ExcelCatalogExporter(str(output_path))
+            exporter.export(tables, fields)
+            logger.info(f"Data catalog successfully exported to {output_path}")
         except Exception as e:
             logger.error(f"Failed to parse SQL file: {e}")
             logger.error(traceback.format_exc())
@@ -119,9 +115,17 @@ def run(
         # DB connection mode: khởi tạo LLMClient
         llm_client = LLMClient(config.llm)
         logger.info(f"Initialized LLM Client with mode: {config.llm.mode}")
+        
         for db_config in config.databases:
             logger.info(f"[{db_config.alias}] Starting crawl on database {db_config.database}...")
+            db_tables: List[TableSchema] = []
+            db_fields: List[FieldSchema] = []
+            stt_table = 1
+            stt_field = 1
+            
             try:
+                output_path = Path(output_dir) / f"data_catalog_{db_config.alias}.xlsx"
+                
                 with ConnectorFactory.get_connector(db_config) as conn:
                     table_crawler = TableCrawler(conn, db_config)
                     field_crawler = FieldCrawler(
@@ -135,33 +139,29 @@ def run(
                     logger.info(f"[{db_config.alias}] Found {len(tables)} tables.")
                     
                     for table in tables:
-                        table.stt = global_stt_table
-                        global_stt_table += 1
+                        table.stt = stt_table
+                        stt_table += 1
                         
                         logger.info(f"[{db_config.alias}] Crawling fields for table {table.ten_bang}...")
                         fields = field_crawler.crawl_fields_for_table(table.ten_bang)
                         
                         for field in fields:
-                            field.stt = global_stt_field
-                            global_stt_field += 1
-                        all_fields.extend(fields)
-                        all_tables.extend([table])
+                            field.stt = stt_field
+                            stt_field += 1
+                        db_fields.extend(fields)
+                        db_tables.extend([table])
+                
+                if db_tables:
+                    exporter = ExcelCatalogExporter(str(output_path))
+                    exporter.export(db_tables, db_fields)
+                    logger.info(f"[{db_config.alias}] Data catalog successfully exported to {output_path}")
+                else:
+                    logger.warning(f"[{db_config.alias}] No tables found, skipping export.")
+                    
             except Exception as e:
                 logger.error(f"[{db_config.alias}] Failed to crawl database: {e}. Skipping database.")
+                logger.error(traceback.format_exc())
                 continue
-
-    if not all_tables:
-        logger.warning("No tables were successfully crawled. Exiting without writing catalog.")
-        return
-
-    try:
-        Path(output_dir).mkdir(parents=True, exist_ok=True)
-        exporter = ExcelCatalogExporter(str(output_path))
-        exporter.export(all_tables, all_fields)
-        logger.info(f"Data catalog successfully exported to {output_path}")
-    except Exception as e:
-        logger.error(f"Failed to export Excel file: {e}")
-        sys.exit(1)
 
 @click.command()
 @click.option("--config", required=False, default=None, type=click.Path(), help="Path to connections.yaml configuration file (không cần khi dùng --sql-file).")
