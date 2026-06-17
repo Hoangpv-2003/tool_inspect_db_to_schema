@@ -135,6 +135,7 @@ def run_extract_menu():
     try:
         env = os.environ.copy()
         env["PYTHONPATH"] = str(Path.cwd() / "src")
+        env["PYTHONIOENCODING"] = "utf-8"
         
         # Thêm cờ bufsize=1 để đọc log dòng theo dòng ngay lập tức
         process = subprocess.Popen(
@@ -143,6 +144,7 @@ def run_extract_menu():
             stderr=subprocess.STDOUT,
             text=True,
             encoding="utf-8",
+            errors="replace",
             env=env,
             bufsize=1
         )
@@ -220,6 +222,7 @@ def run_sql_file_menu():
     try:
         env = os.environ.copy()
         env["PYTHONPATH"] = str(Path.cwd() / "src")
+        env["PYTHONIOENCODING"] = "utf-8"
         
         process = subprocess.Popen(
             [sys.executable, "-m", "technical_schema_cataloger.main", "--config", CONFIG_PATH, "--sql-file", file_path],
@@ -227,6 +230,7 @@ def run_sql_file_menu():
             stderr=subprocess.STDOUT,
             text=True,
             encoding="utf-8",
+            errors="replace",
             env=env,
             bufsize=1
         )

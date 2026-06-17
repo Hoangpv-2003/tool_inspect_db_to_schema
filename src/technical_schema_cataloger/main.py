@@ -15,10 +15,20 @@ from .models.table_schema import TableSchema
 from .models.field_schema import FieldSchema
 from .ai.llm_client import LLMClient
 
+# Force UTF-8 for Windows console to avoid UnicodeEncodeError (charmap/cp1252)
+if sys.stdout.encoding.lower() != 'utf-8':
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+        sys.stderr.reconfigure(encoding='utf-8')
+    except (AttributeError, Exception):
+        pass
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[logging.StreamHandler(sys.stdout)]
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ]
 )
 logger = logging.getLogger("db_schema_crawler")
 
