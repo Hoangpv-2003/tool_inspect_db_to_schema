@@ -83,14 +83,17 @@ class SQLServerConnector(BaseConnector):
         pure_table = parts[-1]
         schema = parts[0] if len(parts) > 1 else 'dbo'
         
-        sql = """
+        # Crucial: Use raw quoted name directly in SQL to avoid driver parameter issues with OBJECT_ID
+        safe_full_name = f"[{schema}].[{pure_table}]"
+        
+        sql = f"""
             SELECT SUM(rows) as row_count
             FROM sys.partitions
-            WHERE object_id = OBJECT_ID(?)
+            WHERE object_id = OBJECT_ID('{safe_full_name}')
               AND index_id IN (0, 1)
         """
         try:
-            res = self.execute_query(sql, (f"{schema}.{pure_table}",))
+            res = self.execute_query(sql)
             return res[0]["row_count"] if res and res[0]["row_count"] is not None else 0
         except Exception:
             return super().count_records(table_name)
@@ -205,7 +208,7 @@ class SQLServerConnector(BaseConnector):
         return [row["CHECK_CLAUSE"] for row in res]
 
     def get_update_time(self, table_name: str) -> str | None:
-        """Strictly Metadata-only update time retrieval for SQL Server with create_date fallback."""
+        """Strictly Metadata-only update time retrieval for SQL Server using standard sys.tables only."""
         parts = table_name.split('.')
         pure_table = parts[-1]
         schema = parts[0] if len(parts) > 1 else 'dbo'
@@ -213,18 +216,17 @@ class SQLServerConnector(BaseConnector):
         sql = """
             SELECT 
                 COALESCE(
-                    (SELECT MAX(last_user_update) 
-                     FROM sys.dm_db_index_usage_stats 
-                     WHERE database_id = DB_ID() AND object_id = OBJECT_ID(?)),
                     (SELECT modify_date FROM sys.tables WHERE name = ? AND schema_id = SCHEMA_ID(?)),
                     (SELECT create_date FROM sys.tables WHERE name = ? AND schema_id = SCHEMA_ID(?))
                 ) as MAX_TIME
         """
         try:
-            # Try with fully qualified name and pure name
-            res = self.execute_query(sql, (f"[{schema}].[{pure_table}]", pure_table, schema, pure_table, schema))
+            res = self.execute_query(sql, (pure_table, schema, pure_table, schema))
             if res and res[0]["MAX_TIME"]:
-                return res[0]["MAX_TIME"].strftime("%Y-%m-%d %H:%M:%S")
+                val = res[0]["MAX_TIME"]
+                if hasattr(val, "strftime"):
+                    return val.strftime("%Y-%m-%d %H:%M:%S")
+                return str(val)
         except Exception:
             pass
         return None
