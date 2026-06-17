@@ -141,31 +141,15 @@ class MySQLConnector(BaseConnector):
             return -1
 
     def get_update_time(self, table_name: str) -> str | None:
-        """MySQL specific update time retrieval."""
-        # Try MAX(updated_at) etc as approximation
-        fallback_cols = ["updated_at", "update_time", "modified_at"]
-        sql_cols = f"""
-            SELECT COLUMN_NAME FROM information_schema.COLUMNS
-            WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s
-            AND COLUMN_NAME IN ('{"', '".join(fallback_cols)}')
-        """
-        try:
-            existing_cols = self.execute_query(sql_cols, (self.config.database, table_name))
-            for row in existing_cols:
-                col = row["COLUMN_NAME"]
-                sql_max = f"SELECT MAX(`{col}`) AS max_time FROM `{self.config.database}`.`{table_name}`"
-                res_max = self.execute_query(sql_max)
-                if res_max and res_max[0]["max_time"]:
-                    return str(res_max[0]["max_time"])
-        except Exception:
-            pass
-
-        # Fallback to information_schema
-        sql_tables = "SELECT UPDATE_TIME FROM information_schema.TABLES WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s"
+        """Strictly Metadata-only update time retrieval for MySQL."""
+        sql_tables = "SELECT CREATE_TIME, UPDATE_TIME FROM information_schema.TABLES WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s"
         try:
             res = self.execute_query(sql_tables, (self.config.database, table_name))
-            if res and res[0]["UPDATE_TIME"]:
-                return str(res[0]["UPDATE_TIME"])
+            if res:
+                # Priority: Update Time > Create Time
+                t = res[0].get("UPDATE_TIME") or res[0].get("CREATE_TIME")
+                if t:
+                    return str(t)
         except Exception:
             pass
         return None

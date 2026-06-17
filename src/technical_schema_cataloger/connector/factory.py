@@ -1,26 +1,28 @@
 from typing import Type
 from ..config.schema import DBConfig
 from .base import BaseConnector
-from .mysql import MySQLConnector
-from .postgresql import PostgreSQLConnector
-from .sqlserver import SQLServerConnector
-from .oracle import OracleConnector
 
 class ConnectorFactory:
-    _connectors = {
-        "mysql": MySQLConnector,
-        "postgresql": PostgreSQLConnector,
-        "sqlserver": SQLServerConnector,
-        "oracle": OracleConnector,
-    }
-
     @classmethod
     def get_connector(cls, config: DBConfig) -> BaseConnector:
-        connector_class = cls._connectors.get(config.db_type.lower())
-        if not connector_class:
+        db_type = config.db_type.lower()
+        
+        if db_type == "mysql":
+            from .mysql import MySQLConnector
+            return MySQLConnector(config)
+        elif db_type == "postgresql":
+            from .postgresql import PostgreSQLConnector
+            return PostgreSQLConnector(config)
+        elif db_type == "sqlserver":
+            from .sqlserver import SQLServerConnector
+            return SQLServerConnector(config)
+        elif db_type == "oracle":
+            from .oracle import OracleConnector
+            return OracleConnector(config)
+        else:
             raise ValueError(f"Unsupported database type: {config.db_type}")
-        return connector_class(config)
 
     @classmethod
     def register_connector(cls, db_type: str, connector_class: Type[BaseConnector]):
-        cls._connectors[db_type.lower()] = connector_class
+        # This method is less used now with lazy loading but kept for compatibility
+        pass

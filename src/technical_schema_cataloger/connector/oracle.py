@@ -72,15 +72,30 @@ class OracleConnector(BaseConnector):
                 NULL AS COLUMN_KEY, 
                 DATA_DEFAULT AS COLUMN_DEFAULT, 
                 NULL AS COLUMN_COMMENT, 
-                '' AS EXTRA,
+                CASE WHEN IDENTITY_COLUMN = 'YES' THEN 'auto_increment' ELSE '' END AS EXTRA,
                 COLUMN_ID AS ORDINAL_POSITION
             FROM ALL_TAB_COLUMNS
             WHERE OWNER = USER AND TABLE_NAME = :1
             ORDER BY COLUMN_ID
         """
         # Convert IS_NULLABLE (Y/N) to (YES/NO) for consistency if needed, 
-        # but let's keep it simple for now.
         return self.execute_query(sql, (table_name,))
+
+    def get_update_time(self, table_name: str) -> str | None:
+        """Strictly Metadata-only update time retrieval for Oracle with creation date fallback."""
+        sql_meta = """
+            SELECT COALESCE(t.LAST_ANALYZED, o.CREATED) AS MAX_TIME
+            FROM ALL_TABLES t
+            JOIN ALL_OBJECTS o ON t.OWNER = o.OWNER AND t.TABLE_NAME = o.OBJECT_NAME
+            WHERE t.OWNER = USER AND t.TABLE_NAME = :1 AND o.OBJECT_TYPE = 'TABLE'
+        """
+        try:
+            res = self.execute_query(sql_meta, (table_name,))
+            if res and res[0]["MAX_TIME"]:
+                return str(res[0]["MAX_TIME"])
+        except Exception:
+            pass
+        return None
 
     def get_primary_keys(self, table_name: str) -> List[str]:
         sql = """

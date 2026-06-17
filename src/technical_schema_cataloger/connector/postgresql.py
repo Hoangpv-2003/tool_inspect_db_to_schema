@@ -78,13 +78,30 @@ class PostgreSQLConnector(BaseConnector):
                 NULL AS "COLUMN_KEY", 
                 column_default AS "COLUMN_DEFAULT", 
                 NULL AS "COLUMN_COMMENT", 
-                '' AS "EXTRA",
+                CASE 
+                    WHEN column_default LIKE 'nextval(%%' OR is_identity = 'YES' THEN 'auto_increment' 
+                    ELSE '' 
+                END AS "EXTRA",
                 ordinal_position AS "ORDINAL_POSITION"
             FROM information_schema.columns
             WHERE table_schema = 'public' AND table_name = %s
             ORDER BY ordinal_position
         """
         return self.execute_query(sql, (table_name,))
+
+    def get_update_time(self, table_name: str) -> str | None:
+        """Strictly Metadata-only update time retrieval for PostgreSQL."""
+        sql_stats = "SELECT last_vacuum, last_autovacuum, last_analyze, last_autoanalyze FROM pg_stat_user_tables WHERE relname = %s"
+        try:
+            res = self.execute_query(sql_stats, (table_name,))
+            if res:
+                # Return the most recent technical event time
+                times = [v for v in res[0].values() if v]
+                if times:
+                    return str(max(times))
+        except Exception:
+            pass
+        return None
 
     def get_primary_keys(self, table_name: str) -> List[str]:
         sql = """

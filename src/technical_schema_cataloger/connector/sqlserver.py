@@ -12,19 +12,34 @@ class SQLServerConnector(BaseConnector):
         self.connection = None
 
     def connect(self) -> None:
-        try:
-            # Note: Driver name might need to be adjusted based on environment
-            # Common drivers: {ODBC Driver 17 for SQL Server}, {SQL Server}
-            conn_str = (
-                f"DRIVER={{ODBC Driver 17 for SQL Server}};"
-                f"SERVER={self.config.host},{self.config.port};"
-                f"DATABASE={self.config.database};"
-                f"UID={self.config.user};"
-                f"PWD={self.config.password}"
-            )
-            self.connection = pyodbc.connect(conn_str)
-        except Exception as e:
-            raise ConnectionError(f"Failed to connect to SQL Server database: {e}") from e
+        drivers = [
+            "{SQL Server}",
+            "{ODBC Driver 17 for SQL Server}",
+            "{ODBC Driver 18 for SQL Server}",
+            "{ODBC Driver 13 for SQL Server}",
+            "{ODBC Driver 11 for SQL Server}"
+        ]
+        
+        last_error = None
+        for driver in drivers:
+            try:
+                print(f"  -> Dang thu ket noi bang driver: {driver}...")
+                conn_str = (
+                    f"DRIVER={driver};"
+                    f"SERVER={self.config.host},{self.config.port};"
+                    f"DATABASE={self.config.database};"
+                    f"UID={self.config.user};"
+                    f"PWD={self.config.password};"
+                    "Connect Timeout=5;"
+                )
+                self.connection = pyodbc.connect(conn_str)
+                print(f"  [OK] Ket noi thanh cong bang {driver}")
+                return  # Connection successful
+            except pyodbc.Error as e:
+                last_error = e
+                continue
+        
+        raise ConnectionError(f"Failed to connect to SQL Server database. Tested drivers: {drivers}. Last error: {last_error}")
 
     def disconnect(self) -> None:
         if self.connection:
@@ -52,16 +67,40 @@ class SQLServerConnector(BaseConnector):
     def get_tables(self) -> List[Dict[str, Any]]:
         sql = """
             SELECT 
-                TABLE_NAME, 
+                TABLE_SCHEMA + '.' + TABLE_NAME AS TABLE_NAME, 
                 NULL AS TABLE_COMMENT
             FROM INFORMATION_SCHEMA.TABLES
             WHERE TABLE_TYPE = 'BASE TABLE'
               AND TABLE_CATALOG = ?
-            ORDER BY TABLE_NAME
+            ORDER BY TABLE_SCHEMA, TABLE_NAME
         """
         return self.execute_query(sql, (self.config.database,))
 
+    def count_records(self, table_name: str) -> int:
+        """Fast row count using metadata partitions (SSMS style)."""
+        # table_name might be 'schema.table'
+        parts = table_name.split('.')
+        pure_table = parts[-1]
+        schema = parts[0] if len(parts) > 1 else 'dbo'
+        
+        sql = """
+            SELECT SUM(rows) as row_count
+            FROM sys.partitions
+            WHERE object_id = OBJECT_ID(?)
+              AND index_id IN (0, 1)
+        """
+        try:
+            res = self.execute_query(sql, (f"{schema}.{pure_table}",))
+            return res[0]["row_count"] if res and res[0]["row_count"] is not None else 0
+        except Exception:
+            return super().count_records(table_name)
+
     def get_columns(self, table_name: str) -> List[Dict[str, Any]]:
+        # Handle schema.table
+        parts = table_name.split('.')
+        pure_table = parts[-1]
+        schema = parts[0] if len(parts) > 1 else None
+
         sql = """
             SELECT 
                 COLUMN_NAME, 
@@ -75,38 +114,54 @@ class SQLServerConnector(BaseConnector):
                 NULL AS COLUMN_KEY, 
                 COLUMN_DEFAULT, 
                 NULL AS COLUMN_COMMENT, 
-                '' AS EXTRA,
+                CASE WHEN COLUMNPROPERTY(OBJECT_ID(TABLE_SCHEMA + '.' + TABLE_NAME), COLUMN_NAME, 'IsIdentity') = 1 
+                     THEN 'auto_increment' ELSE '' END AS EXTRA,
                 ORDINAL_POSITION
             FROM INFORMATION_SCHEMA.COLUMNS
             WHERE TABLE_CATALOG = ? AND TABLE_NAME = ?
-            ORDER BY ORDINAL_POSITION
         """
-        return self.execute_query(sql, (self.config.database, table_name))
+        params = [self.config.database, pure_table]
+        if schema:
+            sql += " AND TABLE_SCHEMA = ?"
+            params.append(schema)
+        sql += " ORDER BY ORDINAL_POSITION"
+        
+        return self.execute_query(sql, tuple(params))
 
     def get_primary_keys(self, table_name: str) -> List[str]:
+        parts = table_name.split('.')
+        pure_table = parts[-1]
+        schema = parts[0] if len(parts) > 1 else None
+
         sql = """
-            SELECT COLUMN_NAME
-            FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
-            WHERE TABLE_CATALOG = ? 
-              AND TABLE_NAME = ? 
-              AND CONSTRAINT_NAME IN (
-                  SELECT CONSTRAINT_NAME 
-                  FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS 
-                  WHERE CONSTRAINT_TYPE = 'PRIMARY KEY' 
-                    AND TABLE_CATALOG = ? 
-                    AND TABLE_NAME = ?
-              )
-            ORDER BY ORDINAL_POSITION
+            SELECT kcu.COLUMN_NAME
+            FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
+            JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
+              ON kcu.CONSTRAINT_NAME = tc.CONSTRAINT_NAME
+             AND kcu.TABLE_CATALOG = tc.TABLE_CATALOG
+             AND kcu.TABLE_SCHEMA = tc.TABLE_SCHEMA
+            WHERE kcu.TABLE_CATALOG = ? 
+              AND kcu.TABLE_NAME = ? 
+              AND tc.CONSTRAINT_TYPE = 'PRIMARY KEY'
         """
-        res = self.execute_query(sql, (self.config.database, table_name, self.config.database, table_name))
+        params = [self.config.database, pure_table]
+        if schema:
+            sql += " AND kcu.TABLE_SCHEMA = ?"
+            params.append(schema)
+        sql += " ORDER BY kcu.ORDINAL_POSITION"
+
+        res = self.execute_query(sql, tuple(params))
         return [row["COLUMN_NAME"] for row in res]
 
     def get_foreign_keys(self, table_name: str) -> Dict[str, Dict[str, str]]:
-        # SQL Server specific join for FKs
+        parts = table_name.split('.')
+        pure_table = parts[-1]
+        schema = parts[0] if len(parts) > 1 else None
+
         sql = """
             SELECT 
                 kcu.COLUMN_NAME, 
-                rc.TABLE_NAME AS REFERENCED_TABLE_NAME, 
+                kcu_ref.TABLE_NAME AS REFERENCED_TABLE_NAME, 
                 kcu_ref.COLUMN_NAME AS REFERENCED_COLUMN_NAME
             FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
             JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS rc 
@@ -115,7 +170,12 @@ class SQLServerConnector(BaseConnector):
               ON rc.UNIQUE_CONSTRAINT_NAME = kcu_ref.CONSTRAINT_NAME
             WHERE kcu.TABLE_CATALOG = ? AND kcu.TABLE_NAME = ?
         """
-        res = self.execute_query(sql, (self.config.database, table_name))
+        params = [self.config.database, pure_table]
+        if schema:
+            sql += " AND kcu.TABLE_SCHEMA = ?"
+            params.append(schema)
+
+        res = self.execute_query(sql, tuple(params))
         return {
             row["COLUMN_NAME"]: {
                 "referenced_table": row["REFERENCED_TABLE_NAME"],
@@ -124,6 +184,10 @@ class SQLServerConnector(BaseConnector):
         }
 
     def get_check_constraints(self, table_name: str) -> List[str]:
+        parts = table_name.split('.')
+        pure_table = parts[-1]
+        schema = parts[0] if len(parts) > 1 else None
+
         sql = """
             SELECT CHECK_CLAUSE
             FROM INFORMATION_SCHEMA.CHECK_CONSTRAINTS cc
@@ -132,5 +196,35 @@ class SQLServerConnector(BaseConnector):
             WHERE tc.TABLE_CATALOG = ? 
               AND tc.TABLE_NAME = ?
         """
-        res = self.execute_query(sql, (self.config.database, table_name))
+        params = [self.config.database, pure_table]
+        if schema:
+            sql += " AND tc.TABLE_SCHEMA = ?"
+            params.append(schema)
+
+        res = self.execute_query(sql, tuple(params))
         return [row["CHECK_CLAUSE"] for row in res]
+
+    def get_update_time(self, table_name: str) -> str | None:
+        """Strictly Metadata-only update time retrieval for SQL Server with create_date fallback."""
+        parts = table_name.split('.')
+        pure_table = parts[-1]
+        schema = parts[0] if len(parts) > 1 else 'dbo'
+        
+        sql = """
+            SELECT 
+                COALESCE(
+                    (SELECT MAX(last_user_update) 
+                     FROM sys.dm_db_index_usage_stats 
+                     WHERE database_id = DB_ID() AND object_id = OBJECT_ID(?)),
+                    (SELECT modify_date FROM sys.tables WHERE name = ? AND schema_id = SCHEMA_ID(?)),
+                    (SELECT create_date FROM sys.tables WHERE name = ? AND schema_id = SCHEMA_ID(?))
+                ) as MAX_TIME
+        """
+        try:
+            # Try with fully qualified name and pure name
+            res = self.execute_query(sql, (f"[{schema}].[{pure_table}]", pure_table, schema, pure_table, schema))
+            if res and res[0]["MAX_TIME"]:
+                return res[0]["MAX_TIME"].strftime("%Y-%m-%d %H:%M:%S")
+        except Exception:
+            pass
+        return None

@@ -56,23 +56,29 @@ class FieldCrawler:
                 vals = re.findall(r"'([^']*)'", match.group(1))
                 return f"{data_type.upper()}({len(vals)} giá trị)"
             return data_type.upper()
-        if data_type in ("varchar", "char"):
+        if data_type in ("varchar", "char", "nvarchar", "nchar"):
             length = col["CHARACTER_MAXIMUM_LENGTH"]
+            if length == -1 or (length is not None and length > 4000 and data_type.startswith('n')):
+                 return "MAX"
             return f"{length} ký tự" if length is not None else ""
+        elif data_type in ("varbinary", "binary", "image"):
+            length = col["CHARACTER_MAXIMUM_LENGTH"]
+            if length == -1: return "MAX"
+            return f"{length} bytes" if length is not None else "Binary"
         elif data_type in ("int", "bigint", "tinyint", "mediumint", "smallint"):
             prec = col["NUMERIC_PRECISION"]
             return f"{prec} chữ số" if prec is not None else ""
-        elif data_type in ("decimal", "float", "double"):
+        elif data_type in ("decimal", "float", "double", "numeric", "real"):
             prec = col["NUMERIC_PRECISION"]
             scale = col["NUMERIC_SCALE"]
             if prec is not None and scale is not None:
                 return f"{prec},{scale}"
             return ""
-        elif data_type in ("datetime", "timestamp"):
+        elif data_type in ("datetime", "timestamp", "datetime2", "smalldatetime"):
             return "YYYY-MM-DD HH:MM:SS"
         elif data_type == "date":
             return "YYYY-MM-DD"
-        elif data_type in ("text", "longtext", "mediumtext", "tinytext"):
+        elif data_type in ("text", "longtext", "mediumtext", "tinytext", "ntext"):
             return "text"
         return data_type if data_type else "N/A"
 
@@ -392,6 +398,6 @@ Chỉ trả về chuỗi kết quả ngắn gọn nhất, không thêm giải th
                 dinh_nghia_nghiep_vu=dinh_nghia_nghiep_vu,
                 du_lieu_ca_nhan=du_lieu_ca_nhan,
                 anh_xa=anh_xa,
-                ghi_chu=ghi_chu
+                ghi_chu=""
             ))
         return result
